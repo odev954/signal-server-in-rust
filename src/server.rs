@@ -1,8 +1,11 @@
-pub mod utils;
-use std::thread;
+use crossbeam::thread;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use std::cell::Cell;
+
 use std::net::TcpListener;
 use std::net::TcpStream;
+
 use std::collections::VecDeque;
 use std::collections::HashSet;
 
@@ -14,7 +17,7 @@ pub struct Server
 
 impl Server
 {
-    fn new() -> Server
+    pub fn new() -> Server
     {
         Server
         {
@@ -22,20 +25,33 @@ impl Server
             _users : HashSet::<String>::new()
         }
     }
-    
-    pub fn start(mut self) ->  std::io::Result<()>
+
+    pub fn start(&mut self) ->  std::io::Result<()>
     {
         let listener = TcpListener::bind("127.0.0.1:8826")?;
+        
+        //create thread for message handler
+        thread::scope(|s| {
+            s.spawn(|_| {
+                self.message_handler();
+            });
+        }).unwrap();
 
+        println!("The server is currently running on <127.0.0.1:8826>");
+
+        //listen to incoming connections
         for stream in listener.incoming()
         {
             match stream {
                 Ok(stream) => {
-                    thread::spawn(move || {
-                        self.client_handler(stream);
-                    });
+                    //create thread for client
+                    thread::scope(|s| {
+                        s.spawn(|_| {
+                            self.client_handler(stream);
+                        });
+                    }).unwrap();
                 }
-                Err(e) => { /* connection failed */ }
+                Err(_) => { /* connection failed */ }
             }        
         }
 
@@ -44,44 +60,68 @@ impl Server
 
     fn client_handler(&mut self, stream : TcpStream)
     {
-        let mut status : (String, bool) = (String::new(), false);
+        let status : (String, bool) = self.login(stream.try_clone().expect("failed to reffrence TCP stream"));
         let mut partner : String = String::new();
+        let mut stop : bool = false;
+        //let mut lock = Arc::new(Mutex::new(&self._users));
 
-        status = self.login(stream);
-        
         if status.1
         {
-            loop
+            while !stop
             {
-                self.send_server_update(stream, status.0, partner);
-                partner = self.recv_client_update(stream, status.0);
+                match self.send_server_update(stream.try_clone().expect("failed to reffrence TCP stream"), status.0.clone(), partner.clone())
+                {
+                    Ok(_) => { }
+                    Err(_) => { stop = true }
+                }
+                match self.recv_client_update(stream.try_clone().expect("failed to reffrence TCP stream"), status.0.clone())
+                {
+                    Ok(res) => { partner = res }
+                    Err(_) => { stop = true }
+                }
             }
+            //(*lock.lock().unwrap()).remove(&status.0.clone());
+            //(*self._users.lock().unwrap()).remove(&status.0.clone());
         }
     }
 
     fn login(&mut self, stream : TcpStream) -> (String, bool)
     {
-        let mut args : Vec<String> = get_request_args(stream);
-
         (String::new(), false)
     }
 
-    fn recv_client_update(&mut self, stream : TcpStream, sender : String) -> String
+    fn recv_client_update(&mut self, stream : TcpStream, sender : String) -> Result<String, std::io::Error>
     {
-        String::new()
+        Ok(String::new())
     }
 
-    fn send_server_update(&mut self, stream : TcpStream, user : String, partner : String)
+    fn send_server_update(&mut self, stream : TcpStream, user : String, partner : String) -> Result<(), std::io::Error>
     {
 
+        Ok(())
     }
 
     fn message_handler(&mut self)
     {
+        //let mut message : String = String::new();
+        let mut fields : Vec<&str> = Vec::<&str>::new();
+        
+        
+        loop 
+        {
+            /*while !(*self._messages.lock().unwrap()).is_empty() //DANGER: idk if it will cause a deadlock
+            {
+                //let mut message = (*self._messages.lock().unwrap()).pop_front().expect("failed to retreive the message").to_string();
+                //fields = (*self._messages.lock().unwrap()).front_mut().expect("failed to retreive the message").to_string().split('&').collect
+                let mut m = self._messages.try_lock().unwrap().front_mut().unwrap();
+                fields = m.split('&').collect();
+                self.update_chat_file(self.create_chat_file(fields[0].to_string(), fields[1].to_string()), fields[0].to_string(), fields.join("&"));
+            }*/
 
+        }
     }
 
-    fn create_chat_file(user1 : String, user2 : String) -> String
+    fn create_chat_file(&self, user1 : String, user2 : String) -> String
     {
         String::new()
     }

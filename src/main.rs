@@ -1,5 +1,10 @@
 mod server;
 
 fn main() {
-    println!("test");
+    match server::Server::new().start() {
+        Ok(_) => { }
+        Err(e) => {
+            panic!("The server execution was aborted. cause: {:?}", e);
+        }
+    }
 }
