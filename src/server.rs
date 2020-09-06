@@ -12,7 +12,7 @@ use std::collections::HashSet;
 pub struct Server
 {
     _messages : VecDeque<String>,
-    _users : HashSet<String>
+    _users : Arc<Mutex<HashSet<String>>>
 }
 
 impl Server
@@ -22,7 +22,8 @@ impl Server
         Server
         {
             _messages : VecDeque::<String>::new(),
-            _users : HashSet::<String>::new()
+            _users : Arc::new(Mutex::new(HashSet::<String>::new()))
+            
         }
     }
 
@@ -81,7 +82,7 @@ impl Server
                 }
             }
             //(*lock.lock().unwrap()).remove(&status.0.clone());
-            //(*self._users.lock().unwrap()).remove(&status.0.clone());
+            (*self._users.lock().unwrap()).remove(&status.0.clone());
         }
     }
 
@@ -111,10 +112,8 @@ impl Server
         {
             /*while !(*self._messages.lock().unwrap()).is_empty() //DANGER: idk if it will cause a deadlock
             {
-                //let mut message = (*self._messages.lock().unwrap()).pop_front().expect("failed to retreive the message").to_string();
-                //fields = (*self._messages.lock().unwrap()).front_mut().expect("failed to retreive the message").to_string().split('&').collect
-                let mut m = self._messages.try_lock().unwrap().front_mut().unwrap();
-                fields = m.split('&').collect();
+                let mut message = (*self._messages.lock().unwrap()).pop_front().expect("failed to retreive the message");
+                fields = (*self._messages.lock().unwrap()).front_mut().expect("failed to retreive the message").to_string().split('&').collect();
                 self.update_chat_file(self.create_chat_file(fields[0].to_string(), fields[1].to_string()), fields[0].to_string(), fields.join("&"));
             }*/
 
