@@ -1,4 +1,5 @@
 use std::net::TcpStream;
+use std::io::Read;
 
 /*
 zero padding fill to a integer argument.
@@ -26,9 +27,16 @@ pub fn is_buffer_overflow(arguments_length : Vec<i32>, max_buffer_size : i32) ->
     arguments_length.iter().sum::<i32>() > max_buffer_size
 }
 
-pub fn get_request_args(stream : TcpStream) -> Vec<String>
+pub fn get_request_args(mut stream : TcpStream) -> Vec<String>
 {
-    Vec::<String>::new()
+    let mut args : Vec<String> = Vec::<String>::new();
+    let mut buff : Vec<u8> = Vec::<u8>::new();
+    
+    stream.read(&mut buff[0..3]);
+    args.push(String::from_utf8(buff[0..3].to_vec()).unwrap());
+    buff.clear();
+
+    args
 }
 
 

@@ -104,7 +104,7 @@ impl Server
     {
         loop
         {
-           while !self._messages.read().unwrap().is_empty()
+            while !self._messages.read().unwrap().is_empty()
             {
                 let r = self._messages.read().unwrap();
                 let mut w = self._messages.write().unwrap();
@@ -124,7 +124,7 @@ impl Server
 
     fn update_chat_file(&self, fname : String, sender : String, data : String)
     {
-
+        
     }
 
     fn read_chat_file(fname : String) -> String
