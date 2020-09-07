@@ -102,17 +102,16 @@ impl Server
 
     fn message_handler(&mut self)
     {
-        //let mut message : String = String::new();
-        let mut fields : Vec<&str> = Vec::<&str>::new();
-        
-        
-        loop 
+        loop
         {
-           while !self._messages.read().unwrap().is_empty() //DANGER: idk if it will cause a deadlock
+           while !self._messages.read().unwrap().is_empty()
             {
-                //let mut message = (*self._messages.lock().unwrap()).pop_front().expect("failed to retreive the message");
-                //fields = self._messages.write().unwrap().pop_front().expect("failed to retreive the message").to_string().split('&').collect();
-                //self.update_chat_file(self.create_chat_file(fields[0].to_string(), fields[1].to_string()), fields[0].to_string(), fields.join("&"));
+                let r = self._messages.read().unwrap();
+                let mut w = self._messages.write().unwrap();
+                let fields : Vec<&str> = (*r).front().expect("msg: &str").split('&').collect();
+                
+                self.update_chat_file(self.create_chat_file(fields[0].to_string(), fields[1].to_string()), fields[0].to_string(), fields.join("&"));
+                (*w).pop_front();
             }
 
         }
@@ -123,7 +122,7 @@ impl Server
         String::new()
     }
 
-    fn update_chat_file(&mut self, fname : String, sender : String, data : String)
+    fn update_chat_file(&self, fname : String, sender : String, data : String)
     {
 
     }
