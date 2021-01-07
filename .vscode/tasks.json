@@ -1,14 +1,17 @@
 {
 	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "cargo",
-			"subcommand": "build",
-			"problemMatcher": [
-				"$rustc"
-			],
-			"group": "build",
-			"label": "Rust: cargo build - signal-server-in-rust"
-		}
-	]
+    "tasks": [
+        {
+            "label": "cargo run",
+            "type": "shell",
+            "command": "cargo",
+            "args": [
+                "run",
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
 }

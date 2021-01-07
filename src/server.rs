@@ -35,7 +35,7 @@ impl Server
         //create thread for message handler
         thread::scope(|s| {
             s.spawn(|_| {
-                self.message_handler();
+                self.message_handler(); //TODO: this thread spawning is blocking the execution...
             });
         }).unwrap();
 
