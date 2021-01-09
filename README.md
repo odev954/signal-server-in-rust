@@ -10,10 +10,10 @@ A learning project in Rust 📚
 ❌ I/O from text file  
 ✔️ thread synchronization  
 
-#### server specs:
+### server specs:
 ✔️ chat program for testing  
-❌ simple login implementation
-❌ chat file storage and chat file handling
-❌ sending and receiving chat updates
+❌ simple login implementation  
+❌ chat file storage and chat file handling  
+❌ sending and receiving chat updates  
 
 Feel free to ask questions in the issue section.
