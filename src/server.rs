@@ -11,6 +11,16 @@ use std::collections::VecDeque;
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 
+/* message codes */
+const LOGIN : i32 = 200;
+const SEV_UPDATE_M : i32 = 101;
+const CLI_UPDATE_M : i32 = 204;
+
+/* other constants */
+const POS_USERNAME : usize = 2;
+
+
+
 lazy_static!{
     static ref MESSAGES : Arc<RwLock<VecDeque<String>>> =  Arc::new(RwLock::new(VecDeque::new()));
     static ref USERS : Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
@@ -32,7 +42,16 @@ pub fn start() ->  std::io::Result<()>
             Ok(stream) => {
                 //create thread for client
                 thread::spawn(move || {
-                    client_handler(stream);
+                    let ip = stream.local_addr().unwrap().ip().to_string();
+                    match std::panic::catch_unwind(|| { 
+                        client_handler(stream); 
+                    }) 
+                    {
+                        Ok(_) => { }
+                        Err(_) => {
+                            println!("Connection with '{}' was closed.", ip);
+                        }
+                    }
                 });
             }
             Err(_) => { /* connection failed */ }
@@ -69,7 +88,26 @@ fn client_handler(stream : TcpStream)
 
 fn login(stream : TcpStream) -> (String, bool)
 {
-    (String::new(), false)
+    let args : Vec<String> = utils::get_request_args(stream);
+    let is_logged : bool = args[0].parse::<i32>().unwrap() == LOGIN;
+    let mut username : String = String::new();
+
+    if is_logged
+    {
+        username = args[POS_USERNAME].clone();
+
+        if (*USERS.lock().unwrap()).contains(&username)
+        {
+            println!("New user logged in :: '{}'", username);
+            (*USERS.lock().unwrap()).insert(username.clone());
+        }
+        else
+        {
+            panic!("User '{}' is already logged in!", username);
+        }
+    }
+
+    (username, is_logged)
 }
 
 fn recv_client_update(stream : TcpStream, sender : String) -> Result<String, std::io::Error>

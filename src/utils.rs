@@ -1,6 +1,11 @@
 use std::net::TcpStream;
 use std::io::Read;
 
+const BUFFER_SIZE: usize = 100;
+const LEN_POS: usize = 3; 
+const POS_FIELD_LEN : usize = 5;
+const MOD_LEN : usize = 100;
+
 /*
 zero padding fill to a integer argument.
 input: integer argument, size of padded string.
@@ -30,11 +35,16 @@ pub fn is_buffer_overflow(arguments_length : Vec<i32>, max_buffer_size : i32) ->
 pub fn get_request_args(mut stream : TcpStream) -> Vec<String>
 {
     let mut args : Vec<String> = Vec::<String>::new();
-    let mut buff : Vec<u8> = Vec::<u8>::new();
+    let mut buff = [0; BUFFER_SIZE];
     
-    stream.read(&mut buff[0..3]);
-    args.push(String::from_utf8(buff[0..3].to_vec()).unwrap());
-    buff.clear();
+    //TODO: implement me!!!
+    //stream.read_exact(&mut buff);
+    //args.push(String::from_utf8(buff[0..LEN_POS].to_vec()).unwrap());
+    //args.push(String::from_utf8(buff[LEN_POS..POS_FIELD_LEN].to_vec()).unwrap());
+    //args.push(String::from_utf8(buff[LEN_POS..POS_FIELD_LEN].to_vec()).unwrap());
+    //stream.read(&mut buff);
+    //args.push(String::from_utf8(buff.to_vec()).unwrap());
+    //buff.clear();
 
     args
 }
