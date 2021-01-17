@@ -19,6 +19,11 @@ pub fn zfill(argument : i32, size : i32) -> String
     padded
 }
 
+/*
+function will receive client's request and return the argument vector of the request.
+input: client tcp stream, login message flag.
+output: argument vector.
+*/
 pub fn get_request_args(mut stream : TcpStream, is_login_msg : bool) -> Vec<String>
 {
     let mut args : Vec<String> = Vec::<String>::new();
