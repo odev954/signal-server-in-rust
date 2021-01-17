@@ -1,7 +1,6 @@
 #[path = "utils.rs"] mod utils;
 use std::thread;
 use std::sync::{Arc, Mutex};
-//use std::time::Duration;
 use std::sync::RwLock;
 
 use std::net::TcpListener;
@@ -18,8 +17,6 @@ const CLI_UPDATE_M : i32 = 204;
 
 /* other constants */
 const POS_USERNAME : usize = 2;
-
-
 
 lazy_static!{
     static ref MESSAGES : Arc<RwLock<VecDeque<String>>> =  Arc::new(RwLock::new(VecDeque::new()));
@@ -81,6 +78,7 @@ fn client_handler(stream : TcpStream)
                 Ok(res) => { partner = res }
                 Err(_) => { stop = true }
             }
+            thread::sleep_ms(200);
         }
         (*USERS.lock().unwrap()).remove(&status.0.clone());
     }
@@ -88,7 +86,7 @@ fn client_handler(stream : TcpStream)
 
 fn login(stream : TcpStream) -> (String, bool)
 {
-    let args : Vec<String> = utils::get_request_args(stream);
+    let args : Vec<String> = utils::get_request_args(stream, true);
     let is_logged : bool = args[0].parse::<i32>().unwrap() == LOGIN;
     let mut username : String = String::new();
 
@@ -96,7 +94,7 @@ fn login(stream : TcpStream) -> (String, bool)
     {
         username = args[POS_USERNAME].clone();
 
-        if (*USERS.lock().unwrap()).contains(&username)
+        if !((*USERS.lock().unwrap()).contains(&username))
         {
             println!("New user logged in :: '{}'", username);
             (*USERS.lock().unwrap()).insert(username.clone());
