@@ -5,14 +5,14 @@ A learning project in Rust 📚
 
 ### stuff included:
 ✔️ multi-threading  
-❌ socket programing  
+✔️ socket programing  
 ✔️ std::collections in use  
 ❌ I/O from text file  
 ✔️ thread synchronization  
 
 ### server specs:
 ✔️ chat program for testing  
-❌ simple login implementation  
+✔️ simple login implementation  
 ❌ chat file storage and chat file handling  
 ❌ sending and receiving chat updates  
 
