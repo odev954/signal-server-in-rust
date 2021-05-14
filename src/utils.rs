@@ -1,7 +1,6 @@
 use std::net::TcpStream;
+use std::io::BufReader;
 use std::io::Read;
-
-const BUFFER_SIZE: usize = 100;
 
 /*
 zero padding fill to a integer argument.
@@ -24,39 +23,74 @@ function will receive client's request and return the argument vector of the req
 input: client tcp stream, login message flag.
 output: argument vector.
 */
-pub fn get_request_args(mut stream : TcpStream, is_login_msg : bool) -> Vec<String>
+pub fn get_request_args(stream : TcpStream, is_login_msg : bool) -> std::io::Result<Vec<String>>
 {
     let mut args : Vec<String> = Vec::<String>::new();
-    let mut buff = [0; BUFFER_SIZE];
-    let mut namelen : usize = 0;
-    let mut msglen : usize = 0;
-    
-    stream.read(&mut buff);
-    
-    args.push(String::from_utf8(buff[0..3].to_vec()).unwrap());
-    args.push(String::from_utf8(buff[3..5].to_vec()).unwrap());
-    
-    namelen = args[1].parse::<usize>().unwrap();
-    args.push(String::from_utf8(buff[5..namelen + 5].to_vec()).unwrap());
-    
-    if !is_login_msg //check if its not a login message
+    let mut reader : BufReader<TcpStream> = BufReader::new(stream);
+    let mut buffer : Vec<u8> = Vec::<u8>::new();
+
+    buffer.resize(3, 0);
+    match reader.read_exact(&mut buffer)
     {
-        args.push(String::from_utf8(buff[namelen + 5..namelen + 7].to_vec()).unwrap());
-        msglen = args[3].parse::<usize>().unwrap();
-        if namelen > 0
-        {
-            args.push(String::from_utf8(buff[namelen..].to_vec()).unwrap());
-            if msglen + namelen + 7 > BUFFER_SIZE
+        Ok(_) => { 
+            args.push(String::from_utf8(buffer.clone()).unwrap());
+
+            buffer.resize(2, 0);
+            match reader.read_exact(&mut buffer)
             {
-                while msglen > args[4].len()
-                {
-                    stream.read(&mut buff);
-                    args[4] = format!("{}{}", args[4], String::from_utf8(buff[0..msglen - args[4].len()].to_vec()).unwrap());
+                Ok(_) => { 
+                    args.push(String::from_utf8(buffer.clone()).unwrap());
+
+                    buffer.resize(args[1].parse::<usize>().unwrap(), 0);
+                    match reader.read_exact(&mut buffer)
+                    {
+                        Ok(_) => { 
+                            args.push(String::from_utf8(buffer.clone()).unwrap());
+
+                            if !is_login_msg //check if its not a login message
+                            {
+                                buffer.resize(5, 0);
+                                match reader.read_exact(&mut buffer)
+                                {
+                                    Ok(_) => { 
+                                        args.push(String::from_utf8(buffer.clone()).unwrap());
+        
+                                        buffer.resize(args[3].parse::<usize>().unwrap(), 0);
+                                        match reader.read_exact(&mut buffer)
+                                        {
+                                            Ok(_) => { 
+                                                args.push(String::from_utf8(buffer.clone()).unwrap());
+                                                Ok(args)
+                                            }
+                                            Err(e) => {
+                                                Err(e)
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        Err(e)
+                                    }
+                                }
+                            } 
+                            else
+                            {
+                                Ok(args)
+                            }
+                        }
+                        Err(e) => {
+                            Err(e)
+                        }
+                    }
+                }
+                Err(e) => {
+                    Err(e)
                 }
             }
         }
+        Err(e) => {
+            Err(e)
+        }
     }
-    args
 }
 
 

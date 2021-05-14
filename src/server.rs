@@ -64,86 +64,112 @@ pub fn start() ->  std::io::Result<()>
 
 fn client_handler(stream : TcpStream)
 {
-    let status : (String, bool) = login(stream.try_clone().expect("failed to reffrence TCP stream"));
+    let result = login(stream.try_clone().expect("failed to reffrence TCP stream"));
     let mut partner : String = String::new();
     let mut stop : bool = false;
 
-    if status.1
-    {
-        while !stop
-        {
-            match send_server_update(stream.try_clone().expect("failed to reffrence TCP stream"), status.0.clone(), partner.clone())
+    match result {
+        Ok(status) => { 
+            if status.1
             {
-                Ok(_) => { println!("sent update!"); }
-                Err(e) => { stop = true; eprintln!("{}", e); }
+                while !stop
+                {
+                    match send_server_update(stream.try_clone().expect("failed to reffrence TCP stream"), status.0.clone(), partner.clone())
+                    {
+                        Ok(_) => { }
+                        Err(e) => { 
+                            stop = true; 
+                            println!("{}", e); 
+                        }
+                    }
+                    match recv_client_update(stream.try_clone().expect("failed to reffrence TCP stream"), status.0.clone())
+                    {
+                        Ok(res) => { 
+                            partner = res; 
+                        }
+                        Err(e) => { 
+                            stop = true; 
+                            println!("{}", e); 
+                        }
+                    }
+                    thread::sleep(std::time::Duration::from_millis(200));
+                }
+                (*USERS.lock().unwrap()).remove(&status.0.clone());
             }
-            match recv_client_update(stream.try_clone().expect("failed to reffrence TCP stream"), status.0.clone())
-            {
-                Ok(res) => { partner = res; println!("recved update!"); }
-                Err(e) => { stop = true; eprintln!("{}", e); }
-            }
-            //thread::sleep(std::time::Duration::from_millis(200));
         }
-        (*USERS.lock().unwrap()).remove(&status.0.clone());
+        Err(_) => {  }
     }
 }
 
-fn login(stream : TcpStream) -> (String, bool)
+fn login(stream : TcpStream) -> std::io::Result<(String, bool)>
 {
-    let args : Vec<String> = utils::get_request_args(stream, true);
-    let is_logged : bool = args[0].parse::<i32>().unwrap() == LOGIN;
-    let mut username : String = String::new();
+    let result = utils::get_request_args(stream, true);
+    let is_login_msg : bool;
+    let username : String;
 
-    if is_logged
-    {
-        username = args[POS_USERNAME].clone();
-
-        if !((*USERS.lock().unwrap()).contains(&username))
-        {
-            println!("New user logged in :: '{}'", username);
-            (*USERS.lock().unwrap()).insert(username.clone());
+    match result {
+        Ok(args) => {
+            username = args[POS_USERNAME].clone();
+            is_login_msg = args[0].parse::<i32>().unwrap() == LOGIN;
+            
+            if is_login_msg
+            {
+                if !((*USERS.lock().unwrap()).contains(&username))
+                {
+                    println!("New user logged in :: '{}'", username);
+                    (*USERS.lock().unwrap()).insert(username.clone());
+                    Ok((username, is_login_msg))
+                }
+                else
+                {
+                    Err(std::io::Error::new(std::io::ErrorKind::Other, format!("User '{}' is already logged in!", username)))
+                }
+            }
+            else
+            {
+                Err(std::io::Error::new(std::io::ErrorKind::Other, format!("User '{}' is already logged in!", username)))
+            }
         }
-        else
-        {
-            panic!("User '{}' is already logged in!", username);
+        Err(e) => {
+            Err(e)
         }
     }
-
-    (username, is_logged)
 }
 
 fn recv_client_update(stream : TcpStream, sender : String) -> Result<String, std::io::Error>
 {
-    let args = utils::get_request_args(stream, false);
+    let result = utils::get_request_args(stream, false);
     
-    println!("args: {}", args.join(" | "));
-    if args[0].parse::<i32>().unwrap() == CLI_UPDATE_M && args.len() == CLI_UPDATE_M_SIZE
-    {
-        if args[CLI_MSG_POS].len() > 0
-        {
-            let mut w = MESSAGES.write().unwrap();
-            (*w).push_back(format!("{}&{}&{}", sender, args[POS_USERNAME], args[CLI_MSG_POS]))
+    match result {
+        Ok(args) => {
+            println!("args: {}", args.join(" | "));
+            if args[0].parse::<i32>().unwrap() == CLI_UPDATE_M && args.len() == CLI_UPDATE_M_SIZE
+            {
+                if args[CLI_MSG_POS].len() > 0
+                {
+                    (*MESSAGES.write().unwrap()).push_back(format!("{}&{}&{}", sender, args[POS_USERNAME], args[CLI_MSG_POS]))
+                }
+                Ok(args[POS_USERNAME].to_string())
+            }
+            else
+            {
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "Invalid client update message!"))
+            }
         }
-        Ok(args[POS_USERNAME].to_string())
+        Err(e) => { Err(e) }
     }
-    else
-    {
-        Err(std::io::Error::new(std::io::ErrorKind::Other, "Invalid client update message!"))
-    }
+    
 }
 
 fn send_server_update(mut stream : TcpStream, user : String, partner : String) -> Result<(), std::io::Error>
 {    
     let online_users = (*USERS.lock().unwrap()).clone().into_iter().collect::<Vec<String>>().join("&");
-    println!("sending update to {}", user);
-    match get_chat_filename(user, partner) {
-        Ok((fname, partner)) => {
-            println!("success 1");
+    match get_chat_filename(user, partner.clone()) {
+        Ok(fname) => {
             if fname.len() > 0
             {
-                match read_chat_file(fname) {
+                match read_chat_file(fname.clone()) {
                     Ok(data) => {
-                        println!("success 2");
                         match stream.write(
                             utils::format_server_update(
                                 SEV_UPDATE_M, 
@@ -153,18 +179,23 @@ fn send_server_update(mut stream : TcpStream, user : String, partner : String) -
                             ).as_bytes())
                         {
                             Ok(_) => {
-                                println!("success 3");
                                 Ok(())
                             }
                             Err(e) => {
-                                println!("failed 3");
                                 Err(e)
                             }
                         }
                     }
-                    Err(e) => { 
-                        println!("failed 2");                                
-                        Err(e)
+                    Err(_) => {
+                        match fs::File::create(fname)
+                        {
+                            Ok(_) => {
+                                send_default_server_update(stream, online_users.clone())
+                            }
+                            Err(e) => {
+                                Err(e)
+                            }
+                        }
                     }
                 }
             }
@@ -175,61 +206,77 @@ fn send_server_update(mut stream : TcpStream, user : String, partner : String) -
             }
         }
         Err(_) => { 
-            match stream.write(
-                utils::format_server_update(
-                    SEV_UPDATE_M, 
-                    String::new(),
-                    String::new(),
-                    online_users
-                ).as_bytes())
-            {
-                Ok(_) => {
-                    println!("success 4");
-                    Ok(())
-                }
-                Err(e) => {
-                    println!("failed 4");
-                    Err(e)
-                }
-            }
+            send_default_server_update(stream, online_users.clone())
+        }
+    }
+}
+
+fn send_default_server_update(mut stream : TcpStream, online_users : String) -> Result<(), std::io::Error>
+{
+    match stream.write(
+        utils::format_server_update(
+            SEV_UPDATE_M, 
+            String::new(),
+            String::new(),
+            online_users
+        ).as_bytes())
+    {
+        Ok(_) => {
+            Ok(())
+        }
+        Err(e) => {
+            Err(e)
         }
     }
 }
 
 fn message_handler()
 {
+    let mut is_empty : bool;
     loop
     {
-        while !MESSAGES.read().unwrap().is_empty()
         {
-            let mut w = MESSAGES.write().unwrap();
             let r = MESSAGES.read().unwrap();
-            let fields : Vec<&str> = (*r).front().expect("msg: &str").split('&').collect();
-
-            match get_chat_filename(fields[0].to_string(), fields[1].to_string())
-            {
-                Ok((fname, _)) => { update_chat_file(fname, fields[0].to_string(), fields.join("&")); }
-                Err(_) => { /* do nothing */ }
-            }
-            
-            (*w).pop_front();
+            is_empty = (*r).is_empty();
         }
+        while !is_empty
+        {
+            {
+                let r = MESSAGES.read().unwrap();
+                let fields : Vec<&str> = (*r).front().expect("").split('&').collect();
+            
+                match get_chat_filename(fields[0].to_string(), fields[1].to_string())
+                {
+                    Ok(fname) => { 
+                        match update_chat_file(fname, fields[0].to_string(), fields[2].to_string())
+                        {
+                            Ok(_) => { /* do nothing */ }
+                            Err(_) => { /* do nothing */ }
+                        }
+                    }
+                    Err(_) => { /* do nothing */ }
+                }
+            }
 
+            {
+                (*MESSAGES.write().unwrap()).pop_front();
+            }
+        }
     }
 }
 
-fn get_chat_filename(user : String, sender : String) -> std::io::Result<(String, String)>
+fn get_chat_filename(user : String, sender : String) -> std::io::Result<String>
 {
-    let result : std::io::Result<(String, String)>;
+    let result : std::io::Result<String>;
     if user != "" && sender != ""
     {
-        if user >= sender
+        if user <= sender
         {
-            result = Ok((format!("{}&{}.txt", user, sender), sender));
+            result = Ok(format!("{}&{}.txt", user, sender));
         }
         else
         {
-            result = Ok((format!("{}&{}.txt", sender, user), sender));
+            result = Ok(format!("{}&{}.txt", sender, user));
         }
     }
     else 
