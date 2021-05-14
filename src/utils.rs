@@ -27,7 +27,6 @@ output: argument vector.
 pub fn get_request_args(mut stream : TcpStream, is_login_msg : bool) -> Vec<String>
 {
     let mut args : Vec<String> = Vec::<String>::new();
-    let mut lens : Vec<usize> = Vec::<usize>::new();
     let mut buff = [0; BUFFER_SIZE];
     let mut namelen : usize = 0;
     let mut msglen : usize = 0;
@@ -57,9 +56,17 @@ pub fn get_request_args(mut stream : TcpStream, is_login_msg : bool) -> Vec<Stri
             }
         }
     }
-    
-
     args
 }
 
 
+pub fn format_server_update(code :i32, data : String, partner : String, users : String) -> String
+{
+    format!("{}{}{}{}{}{}{}", 
+            zfill(code, 3), 
+            zfill(data.len() as i32, 5), 
+            data, 
+            zfill(partner.len() as i32, 2), 
+            partner, 
+            zfill(users.len() as i32, 5), users)
+}
