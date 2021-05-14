@@ -94,7 +94,10 @@ fn client_handler(stream : TcpStream)
                     }
                     thread::sleep(std::time::Duration::from_millis(200));
                 }
-                (*USERS.lock().unwrap()).remove(&status.0.clone());
+                
+                {
+                    (*USERS.lock().unwrap()).remove(&status.0.clone());
+                }
             }
         }
         Err(_) => {  }
@@ -105,6 +108,7 @@ fn login(stream : TcpStream) -> std::io::Result<(String, bool)>
 {
     let result = utils::get_request_args(stream, true);
     let is_login_msg : bool;
+    let already_logged : bool;
     let username : String;
 
     match result {
@@ -112,9 +116,13 @@ fn login(stream : TcpStream) -> std::io::Result<(String, bool)>
             username = args[POS_USERNAME].clone();
             is_login_msg = args[0].parse::<i32>().unwrap() == LOGIN;
             
+            {
+                already_logged = (*USERS.lock().unwrap()).contains(&username);
+            }
+
             if is_login_msg
             {
-                if !((*USERS.lock().unwrap()).contains(&username))
+                if !already_logged
                 {
                     println!("New user logged in :: '{}'", username);
                     (*USERS.lock().unwrap()).insert(username.clone());
@@ -142,7 +150,6 @@ fn recv_client_update(stream : TcpStream, sender : String) -> Result<String, std
     
     match result {
         Ok(args) => {
-            println!("args: {}", args.join(" | "));
             if args[0].parse::<i32>().unwrap() == CLI_UPDATE_M && args.len() == CLI_UPDATE_M_SIZE
             {
                 if args[CLI_MSG_POS].len() > 0
@@ -163,7 +170,11 @@ fn recv_client_update(stream : TcpStream, sender : String) -> Result<String, std
 
 fn send_server_update(mut stream : TcpStream, user : String, partner : String) -> Result<(), std::io::Error>
 {    
-    let online_users = (*USERS.lock().unwrap()).clone().into_iter().collect::<Vec<String>>().join("&");
+    let online_users : String;
+    {
+        online_users = (*USERS.lock().unwrap()).clone().into_iter().collect::<Vec<String>>().join("&");
+    }
+
     match get_chat_filename(user, partner.clone()) {
         Ok(fname) => {
             if fname.len() > 0
