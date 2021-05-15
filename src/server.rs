@@ -154,7 +154,7 @@ fn recv_client_update(stream : TcpStream, sender : String) -> Result<String, std
             {
                 if args[CLI_MSG_POS].len() > 0
                 {
-                    (*MESSAGES.write().unwrap()).push_back(format!("{}&{}&{}", sender, args[POS_USERNAME], args[CLI_MSG_POS]))
+                    (*MESSAGES.write().unwrap()).push_back(format!("{}&{}&{}", sender, args[POS_USERNAME], args[CLI_MSG_POS]));
                 }
                 Ok(args[POS_USERNAME].to_string())
             }
@@ -212,7 +212,6 @@ fn send_server_update(mut stream : TcpStream, user : String, partner : String) -
             }
             else 
             {
-
                 Err(std::io::Error::new(std::io::ErrorKind::Other, "Chat filename was empty!"))
             }
         }
@@ -243,6 +242,7 @@ fn send_default_server_update(mut stream : TcpStream, online_users : String) -> 
 
 fn message_handler()
 {
+    let mut fields : Vec<String>;
     let mut is_empty : bool;
     loop
     {
@@ -250,28 +250,30 @@ fn message_handler()
             let r = MESSAGES.read().unwrap();
             is_empty = (*r).is_empty();
         }
-        while !is_empty
+        if !is_empty
         {
             {
                 let r = MESSAGES.read().unwrap();
-                let fields : Vec<&str> = (*r).front().expect("").split('&').collect();
-            
-                match get_chat_filename(fields[0].to_string(), fields[1].to_string())
-                {
-                    Ok(fname) => { 
-                        match update_chat_file(fname, fields[0].to_string(), fields[2].to_string())
-                        {
-                            Ok(_) => { /* do nothing */ }
-                            Err(_) => { /* do nothing */ }
-                        }
+                fields = (*r).front().expect("cannot reference message").split('&').map(|s| s.to_string()).collect();
+            }
+
+            match get_chat_filename(fields[0].to_string(), fields[1].to_string())
+            {
+                Ok(fname) => { 
+                    match update_chat_file(fname, fields[0].to_string(), fields[2].to_string())
+                    {
+                        Ok(_) => { /* do nothing */ }
+                        Err(_) => { /* do nothing */ }
                     }
-                    Err(_) => { /* do nothing */ }
                 }
+                Err(_) => { /* do nothing */ }
             }
 
             {
                 (*MESSAGES.write().unwrap()).pop_front();
             }
+            
+            fields.clear();
         }
     }
 }
