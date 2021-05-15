@@ -14,6 +14,6 @@ A learning project in Rust 📚
 ✔️ chat file storage and chat file handling  
 ✔️ sending and receiving chat updates  
 
-Information about the communication protocol is provided in (PROTOCOL.md)[https://github.com/odev954/signal-server-in-rust/blob/master/PROTOCOL.md] 🎉 
+Information about the communication protocol is provided in [PROTOCOL.md](https://github.com/odev954/signal-server-in-rust/blob/master/PROTOCOL.md) 🎉 
 
 Feel free to ask questions in the issue section 👍
