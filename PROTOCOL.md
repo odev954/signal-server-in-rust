@@ -51,4 +51,6 @@ message code (101) | length of chat | chat contant | length of partner username 
 -- | -- | -- | -- | -- | -- | -- 
 3 bytes | 5 bytes | len(chat contant) | 2 bytes | len(partner username) | 5 bytes | len(all connected user names)
 
+__________________________________________________________________________________________________________________________________________________________________
+
 Have fun! 🎉
